@@ -65,8 +65,8 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
-
     const usersCollection = client.db("tripTale").collection("users");
+    const packagesCollection = client.db("tripTale").collection("packages");
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
@@ -97,6 +97,34 @@ async function run() {
         res
           .status(500)
           .send({ success: false, message: "Failed to save user", error });
+      }
+    });
+
+    // Express route to get 3 random packages
+    app.get("/packages/random", async (req, res) => {
+      try {
+        const result = await packagesCollection
+          .aggregate([{ $sample: { size: 3 } }])
+          .toArray();
+
+        res.send(result);
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Failed to fetch random packages" });
+      }
+    });
+
+    // single package details route
+    app.get("/packages/:id", async (req, res) => {
+      const { id } = req.params;
+      try {
+        const result = await packagesCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: "Something went wrong" });
       }
     });
 
