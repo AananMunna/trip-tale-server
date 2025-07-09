@@ -1,5 +1,5 @@
 {
-  "name": "gardening-hub-server",
+  "name": "trip-tale-server",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {

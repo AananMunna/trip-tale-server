@@ -69,6 +69,8 @@ async function run() {
     const packagesCollection = client.db("tripTale").collection("packages");
     const bookingsCollection = client.db("tripTale").collection("bookings");
 
+    // all post route here---------------
+
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
       const userData = req.body;
@@ -114,6 +116,17 @@ async function run() {
       }
     });
 
+    // all get route here -------------------
+
+    // GET /bookings?email=user@example.com
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      const result = await bookingsCollection
+        .find({ touristEmail: email })
+        .toArray();
+      res.send(result);
+    });
+
     // Express route to get 3 random packages
     app.get("/packages/random", async (req, res) => {
       try {
@@ -147,6 +160,16 @@ async function run() {
       const role = req.query.role;
       const query = role ? { role } : {};
       const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // all delete router here----------------
+    // DELETE /bookings/:id
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await bookingsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
