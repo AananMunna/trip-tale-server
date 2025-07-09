@@ -67,6 +67,7 @@ async function run() {
     // await client.connect();
     const usersCollection = client.db("tripTale").collection("users");
     const packagesCollection = client.db("tripTale").collection("packages");
+    const bookingsCollection = client.db("tripTale").collection("bookings");
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
@@ -100,6 +101,19 @@ async function run() {
       }
     });
 
+    // booking api to book a package
+    app.post("/bookings", async (req, res) => {
+      const bookingData = req.body;
+      try {
+        const result = await bookingsCollection.insertOne(bookingData);
+        res.send(result);
+      } catch (err) {
+        res
+          .status(500)
+          .send({ error: "Failed to book tour", details: err.message });
+      }
+    });
+
     // Express route to get 3 random packages
     app.get("/packages/random", async (req, res) => {
       try {
@@ -126,6 +140,14 @@ async function run() {
       } catch (err) {
         res.status(500).send({ error: "Something went wrong" });
       }
+    });
+
+    // ✅ Get all users with role = guide
+    app.get("/users", async (req, res) => {
+      const role = req.query.role;
+      const query = role ? { role } : {};
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
