@@ -61,6 +61,9 @@ const verifyTokenEmail = (req, res, next) => {
   }
 };
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+// console.log(process.env.STRIPE_SECRET_KEY)
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -68,8 +71,28 @@ async function run() {
     const usersCollection = client.db("tripTale").collection("users");
     const packagesCollection = client.db("tripTale").collection("packages");
     const bookingsCollection = client.db("tripTale").collection("bookings");
+    const paymentsCollection = client.db("tripTale").collection("payments");
 
-    // all post route here---------------
+    // stripe payment intent----------------------------------------------------
+    app.post("/create-payment-intent", async (req, res) => {
+      const { amount } = req.body;
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount, // in cents: 7200 => 720000
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (err) {
+        res.status(500).json({ error: err.message });
+      }
+    });
+
+    // all post route here--------------------------------------------------------
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
@@ -116,7 +139,48 @@ async function run() {
       }
     });
 
-    // all get route here -------------------
+    // POST route to save payment history
+    app.post("/payment-history", async (req, res) => {
+      try {
+        const paymentData = req.body;
+
+        // Simple validation (you can add more)
+        if (
+          !paymentData.bookingId ||
+          !paymentData.amount ||
+          !paymentData.transactionId ||
+          !paymentData.email
+        ) {
+          return res
+            .status(400)
+            .json({ message: "Missing required payment data" });
+        }
+
+        // Insert payment record into the collection
+        const result = await paymentsCollection.insertOne({
+          ...paymentData,
+          createdAt: new Date(),
+        });
+
+        if (result.insertedId) {
+          return res
+            .status(201)
+            .json({
+              message: "Payment history saved successfully",
+              id: result.insertedId,
+            });
+        } else {
+          return res
+            .status(500)
+            .json({ message: "Failed to save payment history" });
+        }
+      } catch (error) {
+        console.error("Error saving payment history:", error);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
+
+    // all get route here ---------------------------------------------------------
 
     // GET /bookings?email=user@example.com
     app.get("/bookings", async (req, res) => {
@@ -125,6 +189,29 @@ async function run() {
         .find({ touristEmail: email })
         .toArray();
       res.send(result);
+    });
+
+    app.get("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).json({ error: "Invalid booking ID." });
+      }
+
+      try {
+        const booking = await bookingsCollection.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (!booking) {
+          return res.status(404).json({ error: "Booking not found." });
+        }
+
+        res.status(200).json(booking);
+      } catch (error) {
+        console.error("Error fetching booking:", error);
+        res.status(500).json({ error: "Internal server error." });
+      }
     });
 
     // Express route to get 3 random packages
@@ -163,7 +250,25 @@ async function run() {
       res.send(result);
     });
 
-    // all delete router here----------------
+    // get all payment history
+    app.get("/payment-history", async (req, res) => {
+  const email = req.query.email;
+  if (!email) return res.status(400).json({ message: "Email required" });
+
+  try {
+    const history = await paymentsCollection
+      .find({ email })
+      .sort({ date: -1 })
+      .toArray();
+    res.json(history);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+    // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
     app.delete("/bookings/:id", async (req, res) => {
       const id = req.params.id;
@@ -172,6 +277,36 @@ async function run() {
       });
       res.send(result);
     });
+
+
+
+
+    // all patch route here------------------------------------------------------------
+    app.patch('/bookings/:id', async (req, res) => {
+  const id = req.params.id;
+  const updateData = req.body; // e.g., { status: "confirmed" }
+
+  try {
+    const result = await bookingsCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.json({ message: 'Booking updated successfully' });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
+
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
