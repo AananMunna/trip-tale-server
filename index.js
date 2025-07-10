@@ -94,31 +94,34 @@ async function run() {
       }
     });
 
-      // POST: Add a new story
-  app.post("/stories", async (req, res) => {
-    try {
-      const { title, text, images, userEmail } = req.body;
-      // console.log(req.body);
+    // POST: Add a new story
+    app.post("/stories", async (req, res) => {
+      try {
+        const { title, text, images, userEmail } = req.body;
+        // console.log(req.body);
 
-      if (!title || !text || !images || !userEmail) {
-        return res.status(400).json({ error: "Missing required fields" });
+        if (!title || !text || !images || !userEmail) {
+          return res.status(400).json({ error: "Missing required fields" });
+        }
+
+        const storyData = {
+          title,
+          text,
+          images, // Array of image URLs (from imgbb)
+          userEmail,
+          createdAt: new Date(),
+        };
+
+        const result = await storiesCollection.insertOne(storyData);
+        res.status(201).json({
+          insertedId: result.insertedId,
+          message: "Story added successfully",
+        });
+      } catch (error) {
+        console.error("Error adding story:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      const storyData = {
-        title,
-        text,
-        images, // Array of image URLs (from imgbb)
-        userEmail,
-        createdAt: new Date(),
-      };
-
-      const result = await storiesCollection.insertOne(storyData);
-      res.status(201).json({ insertedId: result.insertedId, message: "Story added successfully" });
-    } catch (error) {
-      console.error("Error adding story:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    });
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
@@ -303,6 +306,24 @@ async function run() {
       } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error" });
+      }
+    });
+
+    // get stories via email
+    app.get("/stories", async (req, res) => {
+      try {
+        const email = req.query.email;
+
+        let query = {};
+        if (email) {
+          query = { userEmail: email }; // match only the stories by the specific user
+        }
+
+        const stories = await storiesCollection.find(query).toArray();
+        res.send(stories);
+      } catch (err) {
+        console.error("Error fetching stories:", err);
+        res.status(500).send({ message: "Failed to fetch stories" });
       }
     });
 
