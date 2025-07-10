@@ -73,6 +73,8 @@ async function run() {
     const bookingsCollection = client.db("tripTale").collection("bookings");
     const paymentsCollection = client.db("tripTale").collection("payments");
     const storiesCollection = client.db("tripTale").collection("stories");
+    const applicationsCollection = client.db("tripTale").collection("guideApplications");
+
 
     // all post route here--------------------------------------------------------
     // stripe payment intent----------------------------------------------------
@@ -120,6 +122,18 @@ async function run() {
       } catch (error) {
         console.error("Error adding story:", error);
         res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // join as tour guide application
+    app.post("/guide-applications", async (req, res) => {
+      const application = req.body;
+      try {
+        const result = await applicationsCollection.insertOne(application);
+        res.send(result);
+      } catch (err) {
+        console.error("Error adding guide application:", err);
+        res.status(500).send({ error: "Failed to submit application" });
       }
     });
 
@@ -393,47 +407,45 @@ async function run() {
 
     // all put route here ----------------------------------------------------------
     // Update story by ID
-app.put("/stories/:id", async (req, res) => {
-  const storyId = req.params.id;
-  const { title, text, removedImages = [], newImageURLs = [] } = req.body;
+    app.put("/stories/:id", async (req, res) => {
+      const storyId = req.params.id;
+      const { title, text, removedImages = [], newImageURLs = [] } = req.body;
 
-  try {
-    const updateOps = {
-      $set: {
-        title,
-        text,
-      },
-    };
+      try {
+        const updateOps = {
+          $set: {
+            title,
+            text,
+          },
+        };
 
-    // If any images to remove
-    if (removedImages.length > 0) {
-      updateOps.$pull = {
-        images: { $in: removedImages },
-      };
-    }
+        // If any images to remove
+        if (removedImages.length > 0) {
+          updateOps.$pull = {
+            images: { $in: removedImages },
+          };
+        }
 
-    // If any new images to add
-    if (newImageURLs.length > 0) {
-      updateOps.$push = {
-        images: {
-          $each: newImageURLs,
-        },
-      };
-    }
+        // If any new images to add
+        if (newImageURLs.length > 0) {
+          updateOps.$push = {
+            images: {
+              $each: newImageURLs,
+            },
+          };
+        }
 
-    const result = await storiesCollection.updateOne(
-      { _id: new ObjectId(storyId) },
-      updateOps
-    );
+        const result = await storiesCollection.updateOne(
+          { _id: new ObjectId(storyId) },
+          updateOps
+        );
 
-    res.send(result);
-  } catch (error) {
-    console.error("❌ Failed to update story:", error);
-    res.status(500).send({ error: "Failed to update story" });
-  }
-});
-
-
+        res.send(result);
+      } catch (error) {
+        console.error("❌ Failed to update story:", error);
+        res.status(500).send({ error: "Failed to update story" });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
