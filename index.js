@@ -138,15 +138,20 @@ async function run() {
       }
     });
 
-    // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
       const userData = req.body;
       const query = { email: userData.email };
+
+      const allowedRoles = ["tourist", "guide"];
+      const role = allowedRoles.includes(userData.role)
+        ? userData.role
+        : "tourist";
+
       const updateDoc = {
         $set: {
           name: userData.name,
           photo: userData.photo,
-          role: userData.role || "tourist",
+          role,
           lastLogin: new Date(),
         },
         $setOnInsert: {
@@ -155,13 +160,15 @@ async function run() {
       };
 
       const options = { upsert: true };
+
       try {
         const result = await usersCollection.updateOne(
           query,
           updateDoc,
           options
         );
-        res.send({ success: true, result });
+        const updatedUser = await usersCollection.findOne(query);
+        res.send({ success: true, user: updatedUser });
       } catch (error) {
         console.error("❌ Error saving user:", error);
         res
@@ -347,21 +354,20 @@ async function run() {
     });
 
     // get stories via email
-app.get("/story", async (req, res) => {
-  const userEmail = req.query.email;
+    app.get("/story", async (req, res) => {
+      const userEmail = req.query.email;
 
-  try {
-    // If email is provided, return only that user's stories
-    const query = userEmail ? { userEmail } : {};
-    const stories = await storiesCollection.find(query).toArray();
+      try {
+        // If email is provided, return only that user's stories
+        const query = userEmail ? { userEmail } : {};
+        const stories = await storiesCollection.find(query).toArray();
 
-    res.send(stories);
-  } catch (err) {
-    console.error("Error fetching stories:", err);
-    res.status(500).send({ error: "Failed to fetch stories" });
-  }
-});
-
+        res.send(stories);
+      } catch (err) {
+        console.error("Error fetching stories:", err);
+        res.status(500).send({ error: "Failed to fetch stories" });
+      }
+    });
 
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
