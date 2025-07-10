@@ -337,6 +337,25 @@ async function run() {
       res.send(result);
     });
 
+    // delete stories
+    app.delete("/stories/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+
+        const result = await storiesCollection.deleteOne(query);
+
+        if (result.deletedCount > 0) {
+          res.send({ success: true, deletedCount: result.deletedCount });
+        } else {
+          res.status(404).send({ success: false, message: "Story not found" });
+        }
+      } catch (err) {
+        console.error("Failed to delete story:", err);
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+
     // all patch route here------------------------------------------------------------
     app.patch("/bookings/:id", async (req, res) => {
       const id = req.params.id;
