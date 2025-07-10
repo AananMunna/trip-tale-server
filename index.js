@@ -72,6 +72,7 @@ async function run() {
     const packagesCollection = client.db("tripTale").collection("packages");
     const bookingsCollection = client.db("tripTale").collection("bookings");
     const paymentsCollection = client.db("tripTale").collection("payments");
+    const storiesCollection = client.db("tripTale").collection("stories");
 
     // all post route here--------------------------------------------------------
     // stripe payment intent----------------------------------------------------
@@ -92,6 +93,32 @@ async function run() {
         res.status(500).json({ error: err.message });
       }
     });
+
+      // POST: Add a new story
+  app.post("/stories", async (req, res) => {
+    try {
+      const { title, text, images, userEmail } = req.body;
+      // console.log(req.body);
+
+      if (!title || !text || !images || !userEmail) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const storyData = {
+        title,
+        text,
+        images, // Array of image URLs (from imgbb)
+        userEmail,
+        createdAt: new Date(),
+      };
+
+      const result = await storiesCollection.insertOne(storyData);
+      res.status(201).json({ insertedId: result.insertedId, message: "Story added successfully" });
+    } catch (error) {
+      console.error("Error adding story:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
