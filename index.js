@@ -246,6 +246,25 @@ async function run() {
       }
     });
 
+    // GET assigned tours for a guide by guide email
+    app.get("/assigned-tours", async (req, res) => {
+      const guideEmail = req.query.guideEmail;
+      if (!guideEmail)
+        return res.status(400).send({ error: "guideEmail is required" });
+
+      try {
+        // Find tours assigned to this guide (filter by tourGuide field)
+        const assignedTours = await bookingsCollection
+          .find({ tourGuide: guideEmail })
+          .toArray();
+
+        res.send(assignedTours);
+      } catch (error) {
+        console.error("Failed to get assigned tours:", error);
+        res.status(500).send({ error: "Failed to fetch assigned tours" });
+      }
+    });
+
     // GET /bookings?email=user@example.com
     app.get("/bookings", async (req, res) => {
       const email = req.query.email;
@@ -432,6 +451,34 @@ async function run() {
 
       res.send(result);
     });
+
+    // PATCH update tour status by tour ID
+app.patch("/assigned-tours/:id", async (req, res) => {
+  const tourId = req.params.id;
+  const { status } = req.body;
+
+  // Validate allowed statuses (update if your app uses different ones)
+  const allowedStatuses = ["Pending", "In Review", "Accepted", "Rejected", "Confirmed"];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).send({ error: "Invalid status value" });
+  }
+
+  try {
+    const updateResult = await bookingsCollection.updateOne(
+      { _id: new ObjectId(tourId) },
+      { $set: { status } }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return res.status(404).send({ error: "Assigned tour not found" });
+    }
+
+    res.send({ success: true, message: "Status updated successfully" });
+  } catch (error) {
+    console.error("Failed to update assigned tour status:", error);
+    res.status(500).send({ error: "Failed to update status" });
+  }
+});
 
     // all put route here ----------------------------------------------------------
     // Update story by ID
