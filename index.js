@@ -335,23 +335,33 @@ async function run() {
       }
     });
 
-    // get stories via email
+    // get all stories
     app.get("/stories", async (req, res) => {
       try {
-        const email = req.query.email;
-
-        let query = {};
-        if (email) {
-          query = { userEmail: email }; // match only the stories by the specific user
-        }
-
-        const stories = await storiesCollection.find(query).toArray();
+        const stories = await storiesCollection.find({}).toArray();
         res.send(stories);
-      } catch (err) {
-        console.error("Error fetching stories:", err);
-        res.status(500).send({ message: "Failed to fetch stories" });
+      } catch (error) {
+        console.error("Failed to fetch stories:", error);
+        res.status(500).send({ error: "Failed to fetch stories" });
       }
     });
+
+    // get stories via email
+app.get("/story", async (req, res) => {
+  const userEmail = req.query.email;
+
+  try {
+    // If email is provided, return only that user's stories
+    const query = userEmail ? { userEmail } : {};
+    const stories = await storiesCollection.find(query).toArray();
+
+    res.send(stories);
+  } catch (err) {
+    console.error("Error fetching stories:", err);
+    res.status(500).send({ error: "Failed to fetch stories" });
+  }
+});
+
 
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
