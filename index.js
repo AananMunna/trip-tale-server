@@ -73,6 +73,7 @@ async function run() {
     const bookingsCollection = client.db("tripTale").collection("bookings");
     const paymentsCollection = client.db("tripTale").collection("payments");
 
+    // all post route here--------------------------------------------------------
     // stripe payment intent----------------------------------------------------
     app.post("/create-payment-intent", async (req, res) => {
       const { amount } = req.body;
@@ -91,8 +92,6 @@ async function run() {
         res.status(500).json({ error: err.message });
       }
     });
-
-    // all post route here--------------------------------------------------------
 
     // ⬇️ API to save or update user
     app.post("/users", async (req, res) => {
@@ -163,12 +162,10 @@ async function run() {
         });
 
         if (result.insertedId) {
-          return res
-            .status(201)
-            .json({
-              message: "Payment history saved successfully",
-              id: result.insertedId,
-            });
+          return res.status(201).json({
+            message: "Payment history saved successfully",
+            id: result.insertedId,
+          });
         } else {
           return res
             .status(500)
@@ -181,6 +178,21 @@ async function run() {
     });
 
     // all get route here ---------------------------------------------------------
+
+    // get single user data with email
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const user = await usersCollection.findOne({ email });
+        if (user) {
+          res.send(user);
+        } else {
+          res.status(404).send({ message: "User not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Server error", error });
+      }
+    });
 
     // GET /bookings?email=user@example.com
     app.get("/bookings", async (req, res) => {
@@ -242,7 +254,7 @@ async function run() {
       }
     });
 
-    // ✅ Get all users with role = guide
+    //  Get all users with role = guide
     app.get("/users", async (req, res) => {
       const role = req.query.role;
       const query = role ? { role } : {};
@@ -252,21 +264,20 @@ async function run() {
 
     // get all payment history
     app.get("/payment-history", async (req, res) => {
-  const email = req.query.email;
-  if (!email) return res.status(400).json({ message: "Email required" });
+      const email = req.query.email;
+      if (!email) return res.status(400).json({ message: "Email required" });
 
-  try {
-    const history = await paymentsCollection
-      .find({ email })
-      .sort({ date: -1 })
-      .toArray();
-    res.json(history);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
+      try {
+        const history = await paymentsCollection
+          .find({ email })
+          .sort({ date: -1 })
+          .toArray();
+        res.json(history);
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
 
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
@@ -278,35 +289,40 @@ async function run() {
       res.send(result);
     });
 
-
-
-
     // all patch route here------------------------------------------------------------
-    app.patch('/bookings/:id', async (req, res) => {
-  const id = req.params.id;
-  const updateData = req.body; // e.g., { status: "confirmed" }
+    app.patch("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body; // e.g., { status: "confirmed" }
 
-  try {
-    const result = await bookingsCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
+      try {
+        const result = await bookingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateData }
+        );
 
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ message: "Booking not found" });
+        }
 
-    res.json({ message: 'Booking updated successfully' });
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+        res.json({ message: "Booking updated successfully" });
+      } catch (error) {
+        console.error("Error updating booking:", error);
+        res.status(500).json({ message: "Server error" });
+      }
+    });
 
+    // update user data
+    app.patch("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const updatedData = req.body;
 
+      const result = await usersCollection.updateOne(
+        { email },
+        { $set: updatedData }
+      );
 
-
-
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
