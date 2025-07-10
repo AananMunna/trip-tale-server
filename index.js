@@ -453,32 +453,38 @@ async function run() {
     });
 
     // PATCH update tour status by tour ID
-app.patch("/assigned-tours/:id", async (req, res) => {
-  const tourId = req.params.id;
-  const { status } = req.body;
+    app.patch("/assigned-tours/:id", async (req, res) => {
+      const tourId = req.params.id;
+      const { status } = req.body;
 
-  // Validate allowed statuses (update if your app uses different ones)
-  const allowedStatuses = ["Pending", "In Review", "Accepted", "Rejected", "Confirmed"];
-  if (!allowedStatuses.includes(status)) {
-    return res.status(400).send({ error: "Invalid status value" });
-  }
+      // Validate allowed statuses (update if your app uses different ones)
+      const allowedStatuses = [
+        "pending",
+        "in-review",
+        "accepted",
+        "rejected",
+        "confirmed",
+      ];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).send({ error: "Invalid status value" });
+      }
 
-  try {
-    const updateResult = await bookingsCollection.updateOne(
-      { _id: new ObjectId(tourId) },
-      { $set: { status } }
-    );
+      try {
+        const updateResult = await bookingsCollection.updateOne(
+          { _id: new ObjectId(tourId) },
+          { $set: { status } }
+        );
 
-    if (updateResult.matchedCount === 0) {
-      return res.status(404).send({ error: "Assigned tour not found" });
-    }
+        if (updateResult.matchedCount === 0) {
+          return res.status(404).send({ error: "Assigned tour not found" });
+        }
 
-    res.send({ success: true, message: "Status updated successfully" });
-  } catch (error) {
-    console.error("Failed to update assigned tour status:", error);
-    res.status(500).send({ error: "Failed to update status" });
-  }
-});
+        res.send({ success: true, message: "Status updated successfully" });
+      } catch (error) {
+        console.error("Failed to update assigned tour status:", error);
+        res.status(500).send({ error: "Failed to update status" });
+      }
+    });
 
     // all put route here ----------------------------------------------------------
     // Update story by ID
