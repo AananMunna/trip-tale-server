@@ -391,6 +391,23 @@ async function run() {
       res.send(result);
     });
 
+    // all put route here ----------------------------------------------------------
+    // Update story by ID
+    app.put("/stories/:id", async (req, res) => {
+      const storyId = req.params.id;
+      const { title, text } = req.body;
+
+      try {
+        const result = await storiesCollection.updateOne(
+          { _id: new ObjectId(storyId) },
+          { $set: { title, text } }
+        );
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to update story" });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
