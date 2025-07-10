@@ -73,8 +73,9 @@ async function run() {
     const bookingsCollection = client.db("tripTale").collection("bookings");
     const paymentsCollection = client.db("tripTale").collection("payments");
     const storiesCollection = client.db("tripTale").collection("stories");
-    const applicationsCollection = client.db("tripTale").collection("guideApplications");
-
+    const applicationsCollection = client
+      .db("tripTale")
+      .collection("guideApplications");
 
     // all post route here--------------------------------------------------------
     // stripe payment intent----------------------------------------------------
@@ -267,6 +268,17 @@ async function run() {
       } catch (error) {
         console.error("Error fetching booking:", error);
         res.status(500).json({ error: "Internal server error." });
+      }
+    });
+
+    // GET /packages - fetch all packages
+    app.get("/packages", async (req, res) => {
+      try {
+        const packages = await packagesCollection.find({}).toArray();
+        res.status(200).json(packages);
+      } catch (error) {
+        console.error("Failed to get packages:", error);
+        res.status(500).json({ error: "Failed to fetch packages" });
       }
     });
 
