@@ -388,6 +388,26 @@ async function run() {
       }
     });
 
+
+    // get total payments
+    app.get("/admin/stats/payments", async (req, res) => {
+      const email = req.query.email;
+
+      const user = await usersCollection.findOne({ email });
+
+      if (user?.role !== "admin") {
+        return res.status(403).json({ message: "Access denied: Not an admin" });
+      }
+
+      const result = await paymentsCollection
+        .aggregate([
+          { $group: { _id: null, totalPayments: { $sum: "$amount" } } },
+        ])
+        .toArray();
+
+      res.send({ totalPayments: result[0]?.totalPayments || 0 });
+    });
+
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
     app.delete("/bookings/:id", async (req, res) => {
