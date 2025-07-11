@@ -97,6 +97,59 @@ async function run() {
       }
     });
 
+    // add packages api
+    app.post("/packages", async (req, res) => {
+      try {
+        const {
+          title,
+          images, // Array of image URLs
+          description,
+          tourType,
+          duration,
+          price,
+          tourPlan, // Array of strings like "Day 1: ...."
+        } = req.body;
+
+        // Basic validation
+        if (
+          !title ||
+          !images ||
+          !description ||
+          !tourType ||
+          !duration ||
+          !price ||
+          !tourPlan ||
+          !Array.isArray(images) ||
+          images.length === 0 ||
+          !Array.isArray(tourPlan) ||
+          tourPlan.length === 0
+        ) {
+          return res.status(400).json({ error: "Missing or invalid fields." });
+        }
+
+        const newPackage = {
+          title,
+          images,
+          description,
+          tourType,
+          duration,
+          price,
+          tourPlan,
+          createdAt: new Date(),
+        };
+
+        const result = await packagesCollection.insertOne(newPackage);
+
+        res.status(201).json({
+          message: "Package created successfully.",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        console.error("Failed to add package:", error);
+        res.status(500).json({ error: "Internal server error." });
+      }
+    });
+
     // POST: Add a new story
     app.post("/stories", async (req, res) => {
       try {
