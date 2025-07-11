@@ -388,8 +388,7 @@ async function run() {
       }
     });
 
-
-    // get total payments
+    // get total payments admin
     app.get("/admin/stats/payments", async (req, res) => {
       const email = req.query.email;
 
@@ -406,6 +405,24 @@ async function run() {
         .toArray();
 
       res.send({ totalPayments: result[0]?.totalPayments || 0 });
+    });
+
+    // get total user and guide admin
+    app.get("/admin/users-by-role", async (req, res) => {
+      try {
+        const [guides, tourists] = await Promise.all([
+          usersCollection.find({ role: "guide" }).toArray(),
+          usersCollection.find({ role: "tourist" }).toArray(),
+        ]);
+
+        res.status(200).json({
+          guides,
+          tourists,
+        });
+      } catch (err) {
+        console.error("❌ Failed to fetch users by role:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+      }
     });
 
     // all delete router here------------------------------------------------------
