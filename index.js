@@ -397,6 +397,21 @@ async function run() {
       res.send(result);
     });
 
+    // GET users with optional filters for admin dashboard
+    app.get("/admin/users", async (req, res) => {
+      const { role, search } = req.query;
+      const query = {};
+      if (role) query.role = role;
+      if (search) {
+        query.$or = [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ];
+      }
+      const users = await usersCollection.find(query).toArray();
+      res.send(users);
+    });
+
     // get all payment history
     app.get("/payment-history", async (req, res) => {
       const email = req.query.email;
@@ -574,6 +589,17 @@ async function run() {
         console.error("Failed to update assigned tour status:", error);
         res.status(500).send({ error: "Failed to update status" });
       }
+    });
+
+    // PATCH user role for admin
+    app.patch("/admin/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role } }
+      );
+      res.send(result);
     });
 
     // all put route here ----------------------------------------------------------
