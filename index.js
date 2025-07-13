@@ -493,6 +493,12 @@ async function run() {
       }
     });
 
+    // ✅ Get all tour guide applications
+    app.get("/admin/guide-candidates", async (req, res) => {
+      const candidates = await applicationsCollection.find().toArray();
+      res.send(candidates);
+    });
+
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
     app.delete("/bookings/:id", async (req, res) => {
@@ -520,6 +526,15 @@ async function run() {
         console.error("Failed to delete story:", err);
         res.status(500).send({ success: false, message: "Server error" });
       }
+    });
+
+    // ✅ Delete guide application
+    app.delete("/admin/guide-candidates/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await applicationsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
     });
 
     // all patch route here------------------------------------------------------------
@@ -600,6 +615,24 @@ async function run() {
         { $set: { role } }
       );
       res.send(result);
+    });
+
+    // ✅ Accept application (update user role)
+    app.patch("/admin/updateRole/:email", async (req, res) => {
+      const email = req.params.email;
+      const { role } = req.body;
+      console.log("the email", email);
+
+      try {
+        const result = await usersCollection.updateOne(
+          { email },
+          { $set: { role } }
+        );
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to update user role" });
+      }
     });
 
     // all put route here ----------------------------------------------------------
