@@ -151,24 +151,43 @@ async function run() {
     });
 
     // POST: Add a new story
+    // POST: Add a new story
     app.post("/stories", async (req, res) => {
       try {
-        const { title, text, images, userEmail } = req.body;
-        // console.log(req.body);
+        const {
+          title,
+          text,
+          images,
+          userEmail,
+          userName,
+          userPhoto,
+          createdAt,
+        } = req.body;
 
-        if (!title || !text || !images || !userEmail) {
+        // Validate required fields
+        if (
+          !title ||
+          !text ||
+          !images ||
+          !userEmail ||
+          !userName ||
+          !userPhoto
+        ) {
           return res.status(400).json({ error: "Missing required fields" });
         }
 
         const storyData = {
           title,
           text,
-          images, // Array of image URLs (from imgbb)
+          images, // Array of image URLs
           userEmail,
-          createdAt: new Date(),
+          userName,
+          userPhoto,
+          createdAt: createdAt || new Date().toISOString(),
         };
 
         const result = await storiesCollection.insertOne(storyData);
+
         res.status(201).json({
           insertedId: result.insertedId,
           message: "Story added successfully",
@@ -389,7 +408,7 @@ async function run() {
       }
     });
 
-    //  Get all users with role = guide
+    //  Get all users with role
     app.get("/users", async (req, res) => {
       const role = req.query.role;
       const query = role ? { role } : {};
@@ -638,42 +657,43 @@ async function run() {
     // all put route here ----------------------------------------------------------
     // Update story by ID
     app.put("/stories/:id", async (req, res) => {
-      const storyId = req.params.id;
-      const { title, text, removedImages = [], newImageURLs = [] } = req.body;
-
       try {
-        const updateOps = {
-          $set: {
-            title,
-            text,
-          },
-        };
+        const { id } = req.params;
+        const {
+          title,
+          text,
+          removedImages = [],
+          newImageURLs = [],
+          userName,
+          userPhoto,
+        } = req.body;
 
-        // If any images to remove
-        if (removedImages.length > 0) {
-          updateOps.$pull = {
-            images: { $in: removedImages },
-          };
-        }
+        const story = await storiesCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (!story) return res.status(404).json({ error: "Story not found" });
 
-        // If any new images to add
-        if (newImageURLs.length > 0) {
-          updateOps.$push = {
-            images: {
-              $each: newImageURLs,
-            },
-          };
-        }
+        const updatedImages = story.images
+          .filter((img) => !removedImages.includes(img))
+          .concat(newImageURLs);
 
         const result = await storiesCollection.updateOne(
-          { _id: new ObjectId(storyId) },
-          updateOps
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              title,
+              text,
+              images: updatedImages,
+              userName,
+              userPhoto,
+            },
+          }
         );
 
         res.send(result);
-      } catch (error) {
-        console.error("❌ Failed to update story:", error);
-        res.status(500).send({ error: "Failed to update story" });
+      } catch (err) {
+        console.error("Error updating story:", err);
+        res.status(500).json({ error: "Internal server error" });
       }
     });
 
