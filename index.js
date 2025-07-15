@@ -459,33 +459,32 @@ async function run() {
       }
     });
 
-// GET /stories?limit=4&random=true
-app.get("/stor", async (req, res) => {
-  try {
-    const { limit, random } = req.query;
-    const parsedLimit = parseInt(limit) || 0;
+    // GET /stories?limit=4&random=true
+    app.get("/stor", async (req, res) => {
+      try {
+        const { limit, random } = req.query;
+        const parsedLimit = parseInt(limit) || 0;
 
-    let stories;
+        let stories;
 
-    if (random === "true") {
-      stories = await storiesCollection
-        .aggregate([{ $sample: { size: parsedLimit || 4 } }])
-        .toArray(); // 🛠️ FIXED
-    } else {
-      stories = await storiesCollection
-        .find()
-        .sort({ createdAt: -1 })
-        .limit(parsedLimit)
-        .toArray(); // 🛠️ FIXED
-    }
+        if (random === "true") {
+          stories = await storiesCollection
+            .aggregate([{ $sample: { size: parsedLimit || 4 } }])
+            .toArray(); // 🛠️ FIXED
+        } else {
+          stories = await storiesCollection
+            .find()
+            .sort({ createdAt: -1 })
+            .limit(parsedLimit)
+            .toArray(); // 🛠️ FIXED
+        }
 
-    res.status(200).json(stories);
-  } catch (error) {
-    console.error("Failed to fetch stories:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
+        res.status(200).json(stories);
+      } catch (error) {
+        console.error("Failed to fetch stories:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
 
     // get stories via email
     app.get("/story", async (req, res) => {
@@ -500,6 +499,24 @@ app.get("/stor", async (req, res) => {
       } catch (err) {
         console.error("Error fetching stories:", err);
         res.status(500).send({ error: "Failed to fetch stories" });
+      }
+    });
+
+    // GET /guides/random?limit=6
+    app.get("/guides/random", async (req, res) => {
+      try {
+        const limit = parseInt(req.query.limit) || 6;
+        const guides = await usersCollection
+          .aggregate([
+            { $match: { role: "guide" } },
+            { $sample: { size: limit } },
+          ])
+          .toArray();
+
+        res.send(guides);
+      } catch (err) {
+        console.error("Error fetching random guides:", err);
+        res.status(500).json({ message: "Server error" });
       }
     });
 
