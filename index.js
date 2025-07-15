@@ -416,19 +416,29 @@ async function run() {
       res.send(result);
     });
 
-    // GET users with optional filters for admin dashboard
+    // Backend - GET /admin/users
     app.get("/admin/users", async (req, res) => {
-      const { role, search } = req.query;
-      const query = {};
-      if (role) query.role = role;
+      const { page = 1, limit = 10, role, search } = req.query;
+      const parsedPage = parseInt(page);
+      const parsedLimit = parseInt(limit);
+
+      const filter = {};
+      if (role) filter.role = role;
       if (search) {
-        query.$or = [
+        filter.$or = [
           { name: { $regex: search, $options: "i" } },
           { email: { $regex: search, $options: "i" } },
         ];
       }
-      const users = await usersCollection.find(query).toArray();
-      res.send(users);
+
+      const total = await usersCollection.countDocuments(filter);
+      const users = await usersCollection
+        .find(filter)
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit)
+        .toArray();
+
+      res.json({ users, total });
     });
 
     // get all payment history
