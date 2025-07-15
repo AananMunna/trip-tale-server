@@ -66,7 +66,6 @@ function verifyJWT(req, res, next) {
   });
 }
 
-
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // console.log(process.env.STRIPE_SECRET_KEY)
@@ -85,7 +84,7 @@ async function run() {
 
     // all post route here--------------------------------------------------------
     // stripe payment intent----------------------------------------------------
-    app.post("/create-payment-intent",verifyJWT, async (req, res) => {
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { amount } = req.body;
 
       try {
@@ -104,7 +103,7 @@ async function run() {
     });
 
     // add packages api
-    app.post("/packages",verifyJWT, async (req, res) => {
+    app.post("/packages", verifyJWT, async (req, res) => {
       try {
         const {
           title,
@@ -158,7 +157,7 @@ async function run() {
 
     // POST: Add a new story
     // POST: Add a new story
-    app.post("/stories",verifyJWT, async (req, res) => {
+    app.post("/stories", verifyJWT, async (req, res) => {
       try {
         const {
           title,
@@ -205,7 +204,7 @@ async function run() {
     });
 
     // join as tour guide application
-    app.post("/guide-applications",verifyJWT, async (req, res) => {
+    app.post("/guide-applications", verifyJWT, async (req, res) => {
       const application = req.body;
       try {
         const result = await applicationsCollection.insertOne(application);
@@ -216,7 +215,7 @@ async function run() {
       }
     });
 
-    app.post("/users",verifyJWT, async (req, res) => {
+    app.post("/users", verifyJWT, async (req, res) => {
       const userData = req.body;
       const query = { email: userData.email };
 
@@ -256,7 +255,7 @@ async function run() {
     });
 
     // booking api to book a package
-    app.post("/bookings",verifyJWT, async (req, res) => {
+    app.post("/bookings", verifyJWT, async (req, res) => {
       const bookingData = req.body;
       try {
         const result = await bookingsCollection.insertOne(bookingData);
@@ -269,7 +268,7 @@ async function run() {
     });
 
     // POST route to save payment history
-    app.post("/payment-history",verifyJWT, async (req, res) => {
+    app.post("/payment-history", verifyJWT, async (req, res) => {
       try {
         const paymentData = req.body;
 
@@ -325,7 +324,7 @@ async function run() {
     });
 
     // GET assigned tours for a guide by guide email
-    app.get("/assigned-tours",verifyJWT, async (req, res) => {
+    app.get("/assigned-tours", verifyJWT, async (req, res) => {
       const guideEmail = req.query.guideEmail;
       if (!guideEmail)
         return res.status(400).send({ error: "guideEmail is required" });
@@ -344,7 +343,7 @@ async function run() {
     });
 
     // GET /bookings?email=user@example.com
-    app.get("/bookings",verifyJWT, async (req, res) => {
+    app.get("/bookings", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const result = await bookingsCollection
         .find({ touristEmail: email })
@@ -352,7 +351,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/bookings/:id",verifyJWT, async (req, res) => {
+    app.get("/bookings/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
 
       if (!ObjectId.isValid(id)) {
@@ -423,7 +422,7 @@ async function run() {
     });
 
     // Backend - GET /admin/users
-    app.get("/admin/users",verifyJWT, async (req, res) => {
+    app.get("/admin/users", verifyJWT, async (req, res) => {
       const { page = 1, limit = 10, role, search } = req.query;
       const parsedPage = parseInt(page);
       const parsedLimit = parseInt(limit);
@@ -448,7 +447,7 @@ async function run() {
     });
 
     // get all payment history
-    app.get("/payment-history",verifyJWT, async (req, res) => {
+    app.get("/payment-history", verifyJWT, async (req, res) => {
       const email = req.query.email;
       if (!email) return res.status(400).json({ message: "Email required" });
 
@@ -503,7 +502,7 @@ async function run() {
     });
 
     // get stories via email
-    app.get("/story",verifyJWT, async (req, res) => {
+    app.get("/story", verifyJWT, async (req, res) => {
       const userEmail = req.query.email;
 
       try {
@@ -537,7 +536,7 @@ async function run() {
     });
 
     // GET: View user public profile by email
-    app.get("/users/profile/:email",verifyJWT, async (req, res) => {
+    app.get("/users/profile/:email", verifyJWT, async (req, res) => {
       try {
         const email = req.params.email;
         if (!email) {
@@ -571,7 +570,7 @@ async function run() {
     });
 
     // get total payments admin
-    app.get("/admin/stats/payments",verifyJWT, async (req, res) => {
+    app.get("/admin/stats/payments", verifyJWT, async (req, res) => {
       const email = req.query.email;
 
       const user = await usersCollection.findOne({ email });
@@ -590,7 +589,7 @@ async function run() {
     });
 
     // get total user and guide admin
-    app.get("/admin/users-by-role",verifyJWT, async (req, res) => {
+    app.get("/admin/users-by-role", verifyJWT, async (req, res) => {
       try {
         const [guides, tourists] = await Promise.all([
           usersCollection.find({ role: "guide" }).toArray(),
@@ -608,14 +607,14 @@ async function run() {
     });
 
     // ✅ Get all tour guide applications
-    app.get("/admin/guide-candidates",verifyJWT, async (req, res) => {
+    app.get("/admin/guide-candidates", verifyJWT, async (req, res) => {
       const candidates = await applicationsCollection.find().toArray();
       res.send(candidates);
     });
 
     // all delete router here------------------------------------------------------
     // DELETE /bookings/:id
-    app.delete("/bookings/:id",verifyJWT, async (req, res) => {
+    app.delete("/bookings/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const result = await bookingsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -624,7 +623,7 @@ async function run() {
     });
 
     // delete stories
-    app.delete("/stories/:id",verifyJWT, async (req, res) => {
+    app.delete("/stories/:id", verifyJWT, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -643,7 +642,7 @@ async function run() {
     });
 
     // ✅ Delete guide application
-    app.delete("/admin/guide-candidates/:id",verifyJWT, async (req, res) => {
+    app.delete("/admin/guide-candidates/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const result = await applicationsCollection.deleteOne({
         _id: new ObjectId(id),
@@ -651,8 +650,15 @@ async function run() {
       res.send(result);
     });
 
+    // DELETE package
+    app.delete("/packages/:id", verifyJWT, async (req, res) => {
+      const { id } = req.params;
+      await packagesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.json({ message: "Package deleted" });
+    });
+
     // all patch route here------------------------------------------------------------
-    app.patch("/bookings/:id",verifyJWT, async (req, res) => {
+    app.patch("/bookings/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const updateData = req.body; // e.g., { status: "confirmed" }
 
@@ -674,7 +680,7 @@ async function run() {
     });
 
     // update user data
-    app.patch("/users/:email",verifyJWT, async (req, res) => {
+    app.patch("/users/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const updatedData = req.body;
 
@@ -687,7 +693,7 @@ async function run() {
     });
 
     // PATCH update tour status by tour ID
-    app.patch("/assigned-tours/:id",verifyJWT, async (req, res) => {
+    app.patch("/assigned-tours/:id", verifyJWT, async (req, res) => {
       const tourId = req.params.id;
       const { status } = req.body;
 
@@ -721,7 +727,7 @@ async function run() {
     });
 
     // PATCH user role for admin
-    app.patch("/admin/users/:id",verifyJWT, async (req, res) => {
+    app.patch("/admin/users/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const { role } = req.body;
       const result = await usersCollection.updateOne(
@@ -732,7 +738,7 @@ async function run() {
     });
 
     // ✅ Accept application (update user role)
-    app.patch("/admin/updateRole/:email",verifyJWT, async (req, res) => {
+    app.patch("/admin/updateRole/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const { role } = req.body;
       console.log("the email", email);
@@ -751,7 +757,7 @@ async function run() {
 
     // all put route here ----------------------------------------------------------
     // Update story by ID
-    app.put("/stories/:id",verifyJWT, async (req, res) => {
+    app.put("/stories/:id", verifyJWT, async (req, res) => {
       try {
         const { id } = req.params;
         const {
@@ -790,6 +796,17 @@ async function run() {
         console.error("Error updating story:", err);
         res.status(500).json({ error: "Internal server error" });
       }
+    });
+
+    // PUT update package
+    app.put("/packages/:id", verifyJWT, async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+      await packagesCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
+      res.json({ message: "Package updated" });
     });
 
     // Send a ping to confirm a successful connection
