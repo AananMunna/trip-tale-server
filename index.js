@@ -459,6 +459,34 @@ async function run() {
       }
     });
 
+// GET /stories?limit=4&random=true
+app.get("/stor", async (req, res) => {
+  try {
+    const { limit, random } = req.query;
+    const parsedLimit = parseInt(limit) || 0;
+
+    let stories;
+
+    if (random === "true") {
+      stories = await storiesCollection
+        .aggregate([{ $sample: { size: parsedLimit || 4 } }])
+        .toArray(); // 🛠️ FIXED
+    } else {
+      stories = await storiesCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .limit(parsedLimit)
+        .toArray(); // 🛠️ FIXED
+    }
+
+    res.status(200).json(stories);
+  } catch (error) {
+    console.error("Failed to fetch stories:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
     // get stories via email
     app.get("/story", async (req, res) => {
       const userEmail = req.query.email;
@@ -472,6 +500,40 @@ async function run() {
       } catch (err) {
         console.error("Error fetching stories:", err);
         res.status(500).send({ error: "Failed to fetch stories" });
+      }
+    });
+
+    // GET: View user public profile by email
+    app.get("/users/profile/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        if (!email) {
+          return res.status(400).json({ error: "Email is required" });
+        }
+
+        const user = await usersCollection.findOne(
+          { email },
+          {
+            projection: {
+              name: 1,
+              email: 1,
+              photoURL: 1,
+              createdAt: 1,
+              bio: 1,
+              location: 1,
+              // Add more public fields if needed
+            },
+          }
+        );
+
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+
+        res.json(user);
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
     });
 
