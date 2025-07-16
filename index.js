@@ -45,7 +45,7 @@ app.post("/jwt", async (req, res) => {
   const user = req.body; // { email: "user@gmail.com", role: "tourist" }
 
   const token = jwt.sign(user, JWT_SECRET, {
-    expiresIn: "2h", // token will expire in 2 hours
+    expiresIn: "17d", // token will expire in 7 days
   });
 
   res.send({ token });
@@ -215,44 +215,51 @@ async function run() {
       }
     });
 
-    app.post("/users", verifyJWT, async (req, res) => {
-      const userData = req.body;
-      const query = { email: userData.email };
+app.post("/users", verifyJWT, async (req, res) => {
+  const userData = req.body;
+  const query = { email: userData.email };
 
-      const allowedRoles = ["tourist", "guide"];
-      const role = allowedRoles.includes(userData.role)
-        ? userData.role
-        : "tourist";
+  try {
+    const existingUser = await usersCollection.findOne(query);
 
-      const updateDoc = {
+    let updateDoc;
+
+    if (existingUser) {
+      // If user already exists, update only name/photo/lastLogin
+      updateDoc = {
         $set: {
           name: userData.name,
           photo: userData.photo,
-          role,
+          lastLogin: new Date(),
+        },
+      };
+    } else {
+      // If new user, assign role = tourist
+      updateDoc = {
+        $set: {
+          name: userData.name,
+          photo: userData.photo,
+          role: "tourist",
           lastLogin: new Date(),
         },
         $setOnInsert: {
           createdAt: new Date(),
         },
       };
+    }
 
-      const options = { upsert: true };
+    const options = { upsert: true };
 
-      try {
-        const result = await usersCollection.updateOne(
-          query,
-          updateDoc,
-          options
-        );
-        const updatedUser = await usersCollection.findOne(query);
-        res.send({ success: true, user: updatedUser });
-      } catch (error) {
-        console.error("❌ Error saving user:", error);
-        res
-          .status(500)
-          .send({ success: false, message: "Failed to save user", error });
-      }
-    });
+    const result = await usersCollection.updateOne(query, updateDoc, options);
+    const updatedUser = await usersCollection.findOne(query);
+    res.send({ success: true, user: updatedUser });
+
+  } catch (error) {
+    console.error("❌ Error saving user:", error);
+    res.status(500).send({ success: false, message: "Failed to save user", error });
+  }
+});
+
 
     // booking api to book a package
     app.post("/bookings", verifyJWT, async (req, res) => {
