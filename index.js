@@ -75,6 +75,15 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
+
+
+
+
+
+
+
+
+    // code for socket io
     const messagesCollection = client.db("tripTale").collection("messages");
     // Save chat message
     app.post("/messages", async (req, res) => {
@@ -92,51 +101,58 @@ async function run() {
     });
 
     // 🔁 Add this in your Express backend
-app.get("/messages/inbox/:email", async (req, res) => {
-  const { email } = req.params;
+    app.get("/messages/inbox/:email", async (req, res) => {
+      const { email } = req.params;
 
-  try {
-    const messages = await messagesCollection
-      .find({
-        $or: [{ sender: email }, { receiver: email }],
-      })
-      .toArray();
+      try {
+        const messages = await messagesCollection
+          .find({
+            $or: [{ sender: email }, { receiver: email }],
+          })
+          .toArray();
 
-    // Find unique other people (tourist/guide)
-    const people = new Map();
+        // Find unique other people (tourist/guide)
+        const people = new Map();
 
-    messages.forEach((msg) => {
-      const other = msg.sender === email ? msg.receiver : msg.sender;
-      if (!people.has(other)) {
-        people.set(other, {
-          email: other,
-          name: other.split("@")[0],
+        messages.forEach((msg) => {
+          const other = msg.sender === email ? msg.receiver : msg.sender;
+          if (!people.has(other)) {
+            people.set(other, {
+              email: other,
+              name: other.split("@")[0],
+            });
+          }
         });
+
+        res.send(Array.from(people.values()));
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ message: "Failed to load inbox" });
       }
     });
 
-    res.send(Array.from(people.values()));
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ message: "Failed to load inbox" });
-  }
-});
+    // ✅ Get chat history by roomId (not _id!)
+    app.get("/messages/:roomId", async (req, res) => {
+      const roomId = req.params.roomId;
+      try {
+        const messages = await messagesCollection
+          .find({ roomId }) // ✅ Use roomId directly
+          .sort({ timestamp: 1 })
+          .toArray();
 
-// ✅ Get chat history by roomId (not _id!)
-app.get("/messages/:roomId", async (req, res) => {
-  const roomId = req.params.roomId;
-  try {
-    const messages = await messagesCollection
-      .find({ roomId }) // ✅ Use roomId directly
-      .sort({ timestamp: 1 })
-      .toArray();
+        res.send(messages);
+      } catch (err) {
+        console.error("❌ Failed to fetch messages:", err);
+        res.status(500).send({ message: "Server Error" });
+      }
+    });
 
-    res.send(messages);
-  } catch (err) {
-    console.error("❌ Failed to fetch messages:", err);
-    res.status(500).send({ message: "Server Error" });
-  }
-});
+
+
+
+
+
+
 
 
     const usersCollection = client.db("tripTale").collection("users");
@@ -281,59 +297,39 @@ app.get("/messages/:roomId", async (req, res) => {
       }
     });
 
-app.post("/users", verifyJWT, async (req, res) => {
+app.put("/users/:email", async (req, res) => {
+  const email = req.params.email;
   const userData = req.body;
-  userData.email = userData.email.toLowerCase().trim(); // Normalize
 
-  const query = { email: userData.email };
-
-  try {
-    const existingUser = await usersCollection.findOne(query);
-    console.log("🕵️‍♂️ [LOGIN ATTEMPT]", {
-      email: userData.email,
-      existingRole: existingUser?.role,
-    });
-
-    let updateDoc;
-
-    if (existingUser) {
-      updateDoc = {
-        $set: {
-          name: userData.name,
-          photo: userData.photo,
-          lastLogin: new Date(),
-        },
-      };
-    } else {
-      updateDoc = {
-        $set: {
-          name: userData.name,
-          photo: userData.photo,
-          role: "tourist",
-          lastLogin: new Date(),
-        },
-        $setOnInsert: {
-          createdAt: new Date(),
-        },
-      };
-    }
-
-    const options = { upsert: true };
-    const result = await usersCollection.updateOne(query, updateDoc, options);
-    const updatedUser = await usersCollection.findOne(query);
-
-    console.log("📥 [USER UPDATED]", {
-      email: updatedUser.email,
-      finalRole: updatedUser.role,
-    });
-
-    res.send({ success: true, user: updatedUser });
-  } catch (error) {
-    console.error("🔥 Error saving user:", error);
-    res
-      .status(500)
-      .send({ success: false, message: "Failed to save user", error });
+  if (!email) {
+    return res.status(400).send({ error: "Email is required" });
   }
+
+  const filter = { email };
+  const existingUser = await usersCollection.findOne(filter);
+
+  const updateDoc = {
+    $set: {
+      name: userData.name,
+      photo: userData.photo,
+      lastLogin: new Date(),
+    },
+  };
+
+  // Only set role if user is new or doesn't have one
+  if (!existingUser || !existingUser.role) {
+    updateDoc.$set.role = "tourist";
+  }
+
+  // Only set createdAt if inserting a new document
+  updateDoc.$setOnInsert = {
+    createdAt: new Date(),
+  };
+
+  const options = { upsert: true };
+  const result = await usersCollection.updateOne(filter, updateDoc, options);
+
+  res.send(result);
 });
 
 
