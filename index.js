@@ -83,7 +83,7 @@ async function run() {
 
 
 
-    // code for socket io
+   // code for socket io
     const messagesCollection = client.db("tripTale").collection("messages");
     // Save chat message
     app.post("/messages", async (req, res) => {
