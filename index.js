@@ -1,4 +1,7 @@
 const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+
 const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -9,7 +12,6 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.9c3fo4b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.5yis0oo.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -73,6 +75,70 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
+    const messagesCollection = client.db("tripTale").collection("messages");
+    // Save chat message
+    app.post("/messages", async (req, res) => {
+      const message = req.body;
+      try {
+        const result = await messagesCollection.insertOne({
+          ...message,
+          timestamp: new Date(),
+        });
+        res.send(result);
+      } catch (err) {
+        console.error("❌ Failed to save message:", err);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+    // 🔁 Add this in your Express backend
+app.get("/messages/inbox/:email", async (req, res) => {
+  const { email } = req.params;
+
+  try {
+    const messages = await messagesCollection
+      .find({
+        $or: [{ sender: email }, { receiver: email }],
+      })
+      .toArray();
+
+    // Find unique other people (tourist/guide)
+    const people = new Map();
+
+    messages.forEach((msg) => {
+      const other = msg.sender === email ? msg.receiver : msg.sender;
+      if (!people.has(other)) {
+        people.set(other, {
+          email: other,
+          name: other.split("@")[0],
+        });
+      }
+    });
+
+    res.send(Array.from(people.values()));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ message: "Failed to load inbox" });
+  }
+});
+
+// ✅ Get chat history by roomId (not _id!)
+app.get("/messages/:roomId", async (req, res) => {
+  const roomId = req.params.roomId;
+  try {
+    const messages = await messagesCollection
+      .find({ roomId }) // ✅ Use roomId directly
+      .sort({ timestamp: 1 })
+      .toArray();
+
+    res.send(messages);
+  } catch (err) {
+    console.error("❌ Failed to fetch messages:", err);
+    res.status(500).send({ message: "Server Error" });
+  }
+});
+
+
     const usersCollection = client.db("tripTale").collection("users");
     const packagesCollection = client.db("tripTale").collection("packages");
     const bookingsCollection = client.db("tripTale").collection("bookings");
@@ -217,15 +283,20 @@ async function run() {
 
 app.post("/users", verifyJWT, async (req, res) => {
   const userData = req.body;
+  userData.email = userData.email.toLowerCase().trim(); // Normalize
+
   const query = { email: userData.email };
 
   try {
     const existingUser = await usersCollection.findOne(query);
+    console.log("🕵️‍♂️ [LOGIN ATTEMPT]", {
+      email: userData.email,
+      existingRole: existingUser?.role,
+    });
 
     let updateDoc;
 
     if (existingUser) {
-      // If user already exists, update only name/photo/lastLogin
       updateDoc = {
         $set: {
           name: userData.name,
@@ -234,7 +305,6 @@ app.post("/users", verifyJWT, async (req, res) => {
         },
       };
     } else {
-      // If new user, assign role = tourist
       updateDoc = {
         $set: {
           name: userData.name,
@@ -249,14 +319,20 @@ app.post("/users", verifyJWT, async (req, res) => {
     }
 
     const options = { upsert: true };
-
     const result = await usersCollection.updateOne(query, updateDoc, options);
     const updatedUser = await usersCollection.findOne(query);
-    res.send({ success: true, user: updatedUser });
 
+    console.log("📥 [USER UPDATED]", {
+      email: updatedUser.email,
+      finalRole: updatedUser.role,
+    });
+
+    res.send({ success: true, user: updatedUser });
   } catch (error) {
-    console.error("❌ Error saving user:", error);
-    res.status(500).send({ success: false, message: "Failed to save user", error });
+    console.error("🔥 Error saving user:", error);
+    res
+      .status(500)
+      .send({ success: false, message: "Failed to save user", error });
   }
 });
 
@@ -832,6 +908,37 @@ app.get("/", (req, res) => {
   res.send("tripTale server is running.");
 });
 
-app.listen(port, () => {
-  console.log(`tripTale server is running on port ${port}`);
+// app.listen(port, () => {
+//   console.log(`tripTale server is running on port ${port}`);
+// });
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*", // চাইলে origin fix করো
+    methods: ["GET", "POST"],
+  },
+});
+
+io.on("connection", (socket) => {
+  console.log("🟢 New client connected:", socket.id);
+
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    console.log(`🔗 Joined room: ${roomId}`);
+  });
+
+  socket.on("send-message", (message) => {
+    // message: { roomId, text, sender, receiver, timestamp }
+    io.to(message.roomId).emit("receive-message", message);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
+
+server.listen(port, () => {
+  console.log(`🚀 tripTale server with socket.io running on port ${port}`);
 });
